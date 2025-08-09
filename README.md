@@ -53,7 +53,7 @@ HIVE_RPC_NODES=https://api.hive.blog,https://api.deathwing.me
 
 ### Supported exchanges
 
-- **Binance**, **Bitget**, **Huobi**, **MEXC**, **probit**
+- **Binance**, **Bitget**, **Huobi**, **MEXC**, **Probit**
 - Configurable in `src/providers/static-providers.ts`
 
 ## 🔧 Development

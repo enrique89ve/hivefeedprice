@@ -52,7 +52,16 @@ check_env_file() {
 # ---------------------------
 # Requirement checks
 # ---------------------------
+load_nvm() {
+  if [ -d "$HOME/.nvm" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    # shellcheck disable=SC1090
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  fi
+}
+
 check_node() {
+  load_nvm
   if ! command -v node >/dev/null 2>&1; then
     return 1
   fi
@@ -65,7 +74,10 @@ check_node() {
   return 0
 }
 
-check_pnpm() { command -v pnpm >/dev/null 2>&1; }
+check_pnpm() { 
+  load_nvm
+  command -v pnpm >/dev/null 2>&1; 
+}
 
 check_dependencies() {
   [ -d node_modules ] && [ -f pnpm-lock.yaml ]

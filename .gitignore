@@ -1,0 +1,42 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+coverage/
+.DS_Store
+*.pid
+*.seed
+*.pid.lock
+.nyc_output
+
+# Ignore all .md files except README.md
+*.md
+!README.md
+
+# Beekeeper storage
+storage_root-node/.beekeeper
+storage_root-node/
+
+# Runtime files from run.sh
+.app_pid
+hive-feed.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Images (project specific)
+*.png
+*.jpg
+*.jpeg
+*.gif

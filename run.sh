@@ -8,7 +8,7 @@ set -euo pipefail
 # ---------------------------
 # Settings
 # ---------------------------
-APP_NAME="hive-feed-price"
+APP_NAME="hivefeedprice"
 NODE_VERSION="22"           # Target Node.js via NVM
 MIN_NODE_VERSION="20"       # Minimum major version required
 

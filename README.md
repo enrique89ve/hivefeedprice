@@ -10,7 +10,7 @@
 
 ```bash
 git clone https://github.com/enrique89ve/hivefeedprice.git
-cd hive-feed-price
+cd hivefeedprice
 cp .env.example .env  # Configure your credentials
 ./run.sh install     # Install Node.js (min 20; targets 22 with NVM), pnpm and dependencies
 ./run.sh start       # Start the application

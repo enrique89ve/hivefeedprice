@@ -1,5 +1,5 @@
 {
-  "name": "hive-feed-price",
+  "name": "hivefeedprice",
   "version": "1.0.0",
   "description": "A scalable tool for Hive blockchain validators to publish feed prices using @hiveio/wax",
   "main": "dist/index.js",

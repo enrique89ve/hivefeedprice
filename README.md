@@ -19,13 +19,25 @@ cp .env.example .env  # Configure your credentials
 ## 📋 Commands
 
 ```bash
-./run.sh install    # Install complete environment
-./run.sh start      # Start application
-./run.sh stop       # Stop application
-./run.sh restart    # Restart application
-./run.sh logs       # View real-time logs
-./run.sh status     # Show status
-./run.sh clean      # Clean logs and PID files
+./run.sh install      # Install complete environment
+./run.sh start        # Start application
+./run.sh stop         # Stop application
+./run.sh restart      # Restart application
+./run.sh logs         # View real-time logs
+./run.sh status       # Show status
+./run.sh clean        # Clean logs and PID files
+./run.sh clean-wallet # Remove Beekeeper wallet (when changing signing key)
+```
+
+### Changing the signing key
+
+If you need to change `HIVE_SIGNING_PRIVATE_KEY` in your `.env` file:
+
+```bash
+./run.sh stop         # Stop the application
+# Edit .env with new HIVE_SIGNING_PRIVATE_KEY
+./run.sh clean-wallet # Remove old wallet
+./run.sh start        # Start with new key
 ```
 
 ## ⚙️ Requirements & Configuration
@@ -46,7 +58,7 @@ cp .env.example .env
 
 ```bash
 HIVE_WITNESS_ACCOUNT=your-witness-account
-HIVE_PRIVATE_KEY=5J7cSr3Yv4nKwYour1PrivateKey2Here3...
+HIVE_SIGNING_PRIVATE_KEY=5J7cSr3Yv4nKwYour1PrivateKey2Here3...
 FEED_INTERVAL=10min          # 3min, 10min, 30min, 1hour
 HIVE_RPC_NODES=https://api.hive.blog,https://api.deathwing.me
 ```

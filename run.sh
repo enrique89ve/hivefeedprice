@@ -265,13 +265,14 @@ show_status() {
 
   echo
   step "Commands"
-  echo "  ./run.sh install  - Install Node, pnpm, deps"
-  echo "  ./run.sh start    - Start the app"
-  echo "  ./run.sh stop     - Stop the app"
-  echo "  ./run.sh restart  - Restart (stop + start)"
-  echo "  ./run.sh logs     - Follow live logs"
-  echo "  ./run.sh status   - Show status"
-  echo "  ./run.sh clean    - Remove logs and PID"
+  echo "  ./run.sh install      - Install Node, pnpm, deps"
+  echo "  ./run.sh start        - Start the app"
+  echo "  ./run.sh stop         - Stop the app"
+  echo "  ./run.sh restart      - Restart (stop + start)"
+  echo "  ./run.sh logs         - Follow live logs"
+  echo "  ./run.sh status       - Show status"
+  echo "  ./run.sh clean        - Remove logs and PID"
+  echo "  ./run.sh clean-wallet - Remove Beekeeper wallet (if key changed)"
 }
 
 clean_all() {
@@ -281,10 +282,27 @@ clean_all() {
   ok "Cleanup done"
 }
 
+clean_wallet() {
+  header "Cleaning Beekeeper Wallet"
+  stop_app 2>/dev/null || true
+  
+  if [ -d storage_root-node/.beekeeper ]; then
+    step "Removing wallet directory"
+    rm -rf storage_root-node/.beekeeper
+    ok "Wallet cleaned - new wallet will be created on next start"
+  else
+    warn "No wallet found"
+  fi
+  
+  info "You can now start the app with: ./run.sh start"
+}
+
 usage() {
   header "${APP_NAME}"
-  echo "Usage: $0 {install|start|stop|restart|logs|status|clean}"
+  echo "Usage: $0 {install|start|stop|restart|logs|status|clean|clean-wallet}"
   echo "Tip: ./run.sh install && ./run.sh start"
+  echo ""
+  echo "clean-wallet: Remove Beekeeper wallet (use when changing HIVE_SIGNING_PRIVATE_KEY)"
 }
 
 case "${1:-status}" in
@@ -295,5 +313,6 @@ case "${1:-status}" in
   logs)    show_logs   ;;
   status)  show_status ;;
   clean)   clean_all   ;;
+  clean-wallet) clean_wallet ;;
   *) usage; exit 1 ;;
 esac

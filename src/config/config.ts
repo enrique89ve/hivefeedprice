@@ -1,27 +1,27 @@
 export interface HiveConfig {
-	readonly witnessAccount: string;
-	readonly privateKey: string;
-	readonly rpcNodes?: readonly string[];
-	readonly chainId?: string;
+  readonly witnessAccount: string;
+  readonly privateKey: string;
+  readonly rpcNodes?: readonly string[];
+  readonly chainId?: string;
 }
 
 export interface PriceFeedConfig {
-	readonly updateInterval: number;
-	readonly retryAttempts: number;
-	readonly retryDelay: number;
+  readonly updateInterval: number;
+  readonly retryAttempts: number;
+  readonly retryDelay: number;
 }
 
 export interface AppConfig {
-	readonly hive: HiveConfig;
-	readonly priceFeed: PriceFeedConfig;
+  readonly hive: HiveConfig;
+  readonly priceFeed: PriceFeedConfig;
 }
 
-const DEFAULT_CONFIG: Omit<AppConfig, 'hive'> = {
-	priceFeed: {
-		updateInterval: 60_000,
-		retryAttempts: 3,
-		retryDelay: 5_000,
-	},
+const DEFAULT_CONFIG: Omit<AppConfig, "hive"> = {
+  priceFeed: {
+    updateInterval: 60_000,
+    retryAttempts: 3,
+    retryDelay: 5_000,
+  },
 } as const;
 
 function parseInterval(input: string): number {
@@ -35,36 +35,38 @@ function parseInterval(input: string): number {
 }
 
 export function loadConfig(): AppConfig {
-	const witnessAccount = process.env.HIVE_WITNESS_ACCOUNT;
-	const privateKey = process.env.HIVE_PRIVATE_KEY;
-	
-	if (!witnessAccount) {
-		throw new Error('HIVE_WITNESS_ACCOUNT environment variable is required');
-	}
-	
-	if (!privateKey) {
-		throw new Error('HIVE_PRIVATE_KEY environment variable is required');
-	}
+  const witnessAccount = process.env.HIVE_WITNESS_ACCOUNT;
+  const privateKey = process.env.HIVE_SIGNING_PRIVATE_KEY;
 
-	const rpcNodes = process.env.HIVE_RPC_NODES
-		? process.env.HIVE_RPC_NODES.split(',') as readonly string[]
-		: undefined;
+  if (!witnessAccount) {
+    throw new Error("HIVE_WITNESS_ACCOUNT environment variable is required");
+  }
 
-	const updateInterval = process.env.FEED_INTERVAL
-		? parseInterval(process.env.FEED_INTERVAL)
-		: DEFAULT_CONFIG.priceFeed.updateInterval;
+  if (!privateKey) {
+    throw new Error(
+      "HIVE_SIGNING_PRIVATE_KEY environment variable is required"
+    );
+  }
 
-	return {
-		hive: {
-			witnessAccount,
-			privateKey,
-			...(rpcNodes && { rpcNodes }),
-			...(process.env.HIVE_CHAIN_ID && { chainId: process.env.HIVE_CHAIN_ID }),
-		},
-		priceFeed: {
-			updateInterval,
-			retryAttempts: DEFAULT_CONFIG.priceFeed.retryAttempts,
-			retryDelay: DEFAULT_CONFIG.priceFeed.retryDelay,
-		},
-	};
+  const rpcNodes = process.env.HIVE_RPC_NODES
+    ? (process.env.HIVE_RPC_NODES.split(",").map((node) => node.trim()) as readonly string[])
+    : undefined;
+
+  const updateInterval = process.env.FEED_INTERVAL
+    ? parseInterval(process.env.FEED_INTERVAL)
+    : DEFAULT_CONFIG.priceFeed.updateInterval;
+
+  return {
+    hive: {
+      witnessAccount,
+      privateKey,
+      ...(rpcNodes && { rpcNodes }),
+      ...(process.env.HIVE_CHAIN_ID && { chainId: process.env.HIVE_CHAIN_ID }),
+    },
+    priceFeed: {
+      updateInterval,
+      retryAttempts: DEFAULT_CONFIG.priceFeed.retryAttempts,
+      retryDelay: DEFAULT_CONFIG.priceFeed.retryDelay,
+    },
+  };
 }

@@ -1,9 +1,7 @@
 import {
-  createHiveChain,
   createWaxFoundation,
   type IHiveChainInterface,
   type IWaxBaseInterface,
-  type IWaxOptionsChain,
   WitnessSetPropertiesOperation,
   type IWitnessSetPropertiesData,
   type TInternalAsset,
@@ -14,7 +12,7 @@ import createBeekeeper, {
 } from "@hiveio/beekeeper";
 import { priceAggregator } from "@/services/price-aggregator";
 import { loadConfig } from "@/config/config";
-
+import { HiveChainWithFailover } from "@/utils/hive-chain-failover";
 
 const BEEKEEPER = {
   WALLET_NAME: "feed-publisher" as const,
@@ -30,6 +28,7 @@ interface HiveConfig {
 
 export class FeedPublisher {
   private readonly config: HiveConfig;
+  private hiveChainFailover: HiveChainWithFailover | null = null;
   private hive: IHiveChainInterface | null = null;
   private wax: IWaxBaseInterface | null = null;
   private wallet: IBeekeeperUnlockedWallet | null = null;
@@ -47,14 +46,27 @@ export class FeedPublisher {
     try {
       this.wax = await createWaxFoundation();
 
-      const chainOptions = this.config.rpcNodes?.length
-        ? ({ apiEndpoint: this.config.rpcNodes[0]! } as IWaxOptionsChain)
-        : ({} as IWaxOptionsChain);
+      // Initialize failover chain with configured RPC nodes
+      const rpcNodes = this.config.rpcNodes && this.config.rpcNodes.length > 0
+        ? [...this.config.rpcNodes]
+        : ["https://api.hive.blog", "https://api.deathwing.me", "https://api.openhive.network"];
 
-      this.hive = await createHiveChain(chainOptions);
+      this.hiveChainFailover = new HiveChainWithFailover({
+        nodes: rpcNodes,
+        timeout: 3000,
+        maxRetries: rpcNodes.length * 2,
+      });
+
+      await this.hiveChainFailover.initialize();
+      this.hive = this.hiveChainFailover.getChain();
 
       const bk = await createBeekeeper();
-      const session = bk.createSession(`${BEEKEEPER.WALLET_NAME}-${Date.now()}`);
+      const session = bk.createSession(
+        `${BEEKEEPER.WALLET_NAME}-${Date.now()}`
+      );
+
+      let walletExists = false;
+      let walletValid = false;
 
       try {
         const lockedWallet: IBeekeeperWallet = await session.openWallet(
@@ -63,16 +75,27 @@ export class FeedPublisher {
         const unlockedWallet = await lockedWallet.unlock(
           BEEKEEPER.WALLET_PASSWORD
         );
-        this.wallet = unlockedWallet;
 
         const publicKeys = await unlockedWallet.getPublicKeys();
         if (!publicKeys || publicKeys.length === 0) {
           throw new Error("No public keys found in wallet");
         }
+
+        walletExists = true;
+        this.wallet = unlockedWallet;
         this.publicKey = publicKeys[0];
+        walletValid = true;
       } catch (openErr) {
+        // Wallet doesn't exist or failed to open
+        walletExists = false;
+      }
+
+      // Create wallet if it doesn't exist
+      if (!walletExists) {
         if (!this.config.privateKey) {
-          throw new Error("HIVE_PRIVATE_KEY is required for wallet creation");
+          throw new Error(
+            "HIVE_SIGNING_PRIVATE_KEY is required for wallet creation"
+          );
         }
 
         const { wallet } = await session.createWallet(
@@ -82,6 +105,10 @@ export class FeedPublisher {
         );
         this.publicKey = await wallet.importKey(this.config.privateKey);
         this.wallet = wallet;
+
+        console.log("\x1b[32m[SUCCESS]\x1b[0m Wallet created with signing key");
+      } else if (walletValid) {
+        console.log("\x1b[32m[SUCCESS]\x1b[0m Using existing wallet");
       }
     } catch (error) {
       throw new Error(`Failed to initialize: ${error}`);
@@ -124,7 +151,7 @@ export class FeedPublisher {
     baseAsset: TInternalAsset,
     quoteAsset: TInternalAsset
   ): Promise<string> {
-    if (!this.hive) {
+    if (!this.hiveChainFailover) {
       throw new Error(
         "Hive connection not initialized. Call initialize() first."
       );
@@ -133,39 +160,45 @@ export class FeedPublisher {
       throw new Error("Wallet not initialized or public key missing");
     }
 
-    const witnessSetPropsData: IWitnessSetPropertiesData = {
-      owner: this.config.witnessAccount,
-      witnessSigningKey: this.publicKey,
-      hbdExchangeRate: {
-        base: baseAsset,
-        quote: quoteAsset,
+    // Use failover to execute the broadcast operation
+    return await this.hiveChainFailover.executeWithFailover(
+      async (chain) => {
+        const witnessSetPropsData: IWitnessSetPropertiesData = {
+          owner: this.config.witnessAccount,
+          witnessSigningKey: this.publicKey!,
+          hbdExchangeRate: {
+            base: baseAsset,
+            quote: quoteAsset,
+          },
+        };
+
+        const witnessOperation = new WitnessSetPropertiesOperation(
+          witnessSetPropsData
+        );
+
+        const tx = await chain.createTransaction();
+        tx.pushOperation(witnessOperation);
+
+        const transactionId = tx.id;
+        tx.sign(this.wallet!, this.publicKey!);
+
+        await chain.broadcast(tx);
+        return transactionId;
       },
-    };
-
-    const witnessOperation = new WitnessSetPropertiesOperation(
-      witnessSetPropsData
+      "feed_publish"
     );
-
-    const tx = await this.hive.createTransaction();
-    tx.pushOperation(witnessOperation);
-
-    const transactionId = tx.id;
-    tx.sign(this.wallet, this.publicKey);
-
-    await this.hive.broadcast(tx);
-    return transactionId;
   }
 }
 
 export function createFeedPublisher(): FeedPublisher {
-	const config = loadConfig();
+  const config = loadConfig();
 
-	return new FeedPublisher(config.hive);
+  return new FeedPublisher(config.hive);
 }
 
 export function getFeedInterval(): number {
-	const config = loadConfig();
-	return config.priceFeed.updateInterval;
+  const config = loadConfig();
+  return config.priceFeed.updateInterval;
 }
 
 let _feedPublisher: FeedPublisher | null = null;
